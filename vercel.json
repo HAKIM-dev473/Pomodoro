@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/Pomodoro_Timer.html" }
+  ]
+}
