@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Study Timer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 25px rgba(0,0,0,0.3);
+    }
+    h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
+    input {
+      width: 100px;
+      padding: 0.5rem;
+      border-radius: 10px;
+      border: none;
+      text-align: center;
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+    button {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      padding: 0.7rem 1.5rem;
+      border-radius: 15px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      font-weight: 500;
+    }
+    button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+    .timer {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-top: 2rem;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    }
+    .status {
+      margin-top: 1rem;
+      opacity: 0.8;
+      font-size: 1.1rem;
+    }
+    .stats {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem 1.5rem;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Study Timer</h1>
+    <div>
+      <input type="number" id="studyMinutes" placeholder="Minutes" min="1">
+      <button id="startBtn">Start</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+    <div class="timer" id="timerDisplay">00:00</div>
+    <div class="status" id="status">Enter time and click start.</div>
+    <div class="stats">
+      Total Study Time: <span id="totalTime">0 min</span>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Elements ----------
+    const timerDisplay = document.getElementById('timerDisplay');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const input = document.getElementById('studyMinutes');
+    const status = document.getElementById('status');
+    const totalTimeDisplay = document.getElementById('totalTime');
+
+    // ---------- State ----------
+    let timerInterval = null;
+    let endTimestamp = null;        // epoch ms when session should end
+    let runningMinutes = 0;         // original minutes of running session
+
+    // Keys for localStorage
+    const TOTAL_KEY = 'totalStudyTime';
+    const RUNNING_KEY = 'runningStudySession'; // stores { end: <ms>, minutes: <int> }
+
+    // ---------- Helpers ----------
+    function loadTotalTime() {
+      return parseInt(localStorage.getItem(TOTAL_KEY) || '0', 10);
+    }
+
+    function saveTotalTime(addMinutes) {
+      const current = loadTotalTime();
+      const next = current + addMinutes;
+      localStorage.setItem(TOTAL_KEY, String(next));
+      updateTotalDisplay(next);
+    }
+
+    function updateTotalDisplay(total) {
+      totalTimeDisplay.textContent = total + " min";
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function setRunningSession(endMs, minutes) {
+      endTimestamp = endMs;
+      runningMinutes = minutes;
+      localStorage.setItem(RUNNING_KEY, JSON.stringify({ end: endMs, minutes }));
+    }
+
+    function clearRunningSession() {
+      endTimestamp = null;
+      runningMinutes = 0;
+      localStorage.removeItem(RUNNING_KEY);
+    }
+
+    function loadRunningSession() {
+      const raw = localStorage.getItem(RUNNING_KEY);
+      if (!raw) return null;
+      try {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj.end === 'number' && typeof obj.minutes === 'number') {
+          return obj;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // ---------- Core timer update (timestamp-based) ----------
+    function updateTick() {
+      if (!endTimestamp) return;
+
+      const now = Date.now();
+      let secondsLeft = Math.ceil((endTimestamp - now) / 1000); // round up to show 00:00 at 0
+      if (secondsLeft < 0) secondsLeft = 0;
+
+      timerDisplay.textContent = formatTime(secondsLeft);
+
+      if (secondsLeft <= 0) {
+        // finished
+        onComplete();
+      }
+    }
+
+    function startIntervalIfNeeded() {
+      if (timerInterval) return;
+      // Update immediately then every 500ms for smoothness (still uses timestamps)
+      updateTick();
+      timerInterval = setInterval(updateTick, 500);
+    }
+
+    function stopInterval() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    // ---------- Actions ----------
+    function startTimer() {
+      if (endTimestamp) return; // already running
+
+      const minutes = parseInt(input.value, 10);
+      if (!minutes || minutes <= 0) {
+        status.textContent = "Please enter a valid time.";
+        return;
+      }
+
+      const now = Date.now();
+      const end = now + minutes * 60 * 1000;
+
+      // Persist running session so background/refresh is handled
+      setRunningSession(end, minutes);
+
+      // UI lock
+      input.disabled = true;
+      startBtn.disabled = true;
+      status.textContent = "Focus mode started!";
+      startIntervalIfNeeded();
+    }
+
+    function onComplete() {
+      // ensure we only handle completion once
+      if (!endTimestamp) return;
+
+      stopInterval();
+
+      // Add to total and save
+      saveTotalTime(runningMinutes);
+
+      // Clear running session
+      clearRunningSession();
+
+      // Reset UI but keep time display at 00:00
+      timerDisplay.textContent = "00:00";
+      input.disabled = false;
+      startBtn.disabled = false;
+      status.textContent = "Session completed! Enter new time to start again.";
+    }
+
+    function resetTimer() {
+      stopInterval();
+      clearRunningSession();
+      input.disabled = false;
+      startBtn.disabled = false;
+      timerDisplay.textContent = "00:00";
+      status.textContent = "Enter time and click start.";
+    }
+
+    // ---------- Visibility & focus handling ----------
+    // When the page becomes visible again, force an immediate update (so the displayed time is accurate)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // page is visible
+        // if a session is running, update immediately (timestamps give correct time)
+        updateTick();
+      }
+    });
+
+    // Also update on window focus (helpful when switching apps)
+    window.addEventListener('focus', () => {
+      updateTick();
+    });
+
+    // ---------- Initialization ----------
+    window.addEventListener('load', () => {
+      // show total time
+      updateTotalDisplay(loadTotalTime());
+
+      // Restore running session if present
+      const running = loadRunningSession();
+      if (running) {
+        const now = Date.now();
+        if (running.end > now) {
+          // resume session
+          endTimestamp = running.end;
+          runningMinutes = running.minutes;
+          input.disabled = true;
+          startBtn.disabled = true;
+          status.textContent = "Resuming your running session...";
+          startIntervalIfNeeded();
+        } else {
+          // session already ended while user was away -> mark complete now
+          // Add to total and clear stored session
+          saveTotalTime(running.minutes);
+          clearRunningSession();
+          timerDisplay.textContent = "00:00";
+          status.textContent = "Previous session completed while you were away.";
+        }
+      }
+    });
+
+    // ---------- Button events ----------
+    startBtn.addEventListener('click', startTimer);
+    resetBtn.addEventListener('click', resetTimer);
+
+    // Safety: ensure intervals are cleared on unload
+    window.addEventListener('beforeunload', () => {
+      stopInterval();
+    });
+  </script>
+</body>
+</html>
