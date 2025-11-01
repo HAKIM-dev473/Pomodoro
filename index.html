@@ -81,8 +81,11 @@
     <div>
       <input type="number" id="studyHours" placeholder="Hours" min="0">
       <input type="number" id="studyMinutes" placeholder="Minutes" min="0">
-      <button id="startBtn">Start</button>
-      <button id="resetBtn">Reset</button>
+      
+<button id="startBtn">Start</button>
+<button id="resetBtn">Reset</button>
+<button id="clearBtn">Clear</button>
+
     </div>
     <div class="timer" id="timerDisplay">00:00</div>
     <div class="status" id="status">Enter time and click start.</div>
@@ -275,6 +278,14 @@
 
     startBtn.addEventListener('click', startTimer);
     resetBtn.addEventListener('click', resetTimer);
+    
+    const clearBtn = document.getElementById('clearBtn');
+clearBtn.addEventListener('click', () => {
+  localStorage.removeItem('totalStudyTime');
+  updateTotalDisplay(0);
+  status.textContent = "Total study time cleared.";
+});
+
     window.addEventListener('beforeunload', stopInterval);
   </script>
 </body>
