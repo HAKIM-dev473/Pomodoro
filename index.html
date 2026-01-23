@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" type="image/png" href="./Apple.png" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study Timer</title>
+
+    <style>
+      :root{
+        --bg0:#070A12;
+        --bg1:#0B1225;
+        --card: rgba(255,255,255,.08);
+        --card2: rgba(255,255,255,.06);
+        --border: rgba(255,255,255,.14);
+        --txt: rgba(255,255,255,.92);
+        --muted: rgba(255,255,255,.68);
+        --shadow: 0 30px 80px rgba(0,0,0,.55);
+        --r: 24px;
+        --btn: rgba(255,255,255,.10);
+        --btnHover: rgba(255,255,255,.16);
+        --danger: rgba(244, 67, 54, .78);
+        --dangerHover: rgba(244, 67, 54, .92);
+        --ok: rgba(46, 213, 115, .78);
+        --okHover: rgba(46, 213, 115, .92);
+      }
+
+      *{ box-sizing:border-box; margin:0; padding:0; }
+      html, body { height:100%; }
+      body{
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+        color: var(--txt);
+        background:
+          radial-gradient(1200px 700px at 15% 20%, rgba(109, 99, 255,.35), transparent 60%),
+          radial-gradient(900px 600px at 85% 15%, rgba(255, 99, 171,.30), transparent 55%),
+          radial-gradient(900px 700px at 70% 90%, rgba(45, 212, 191,.26), transparent 55%),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
+        overflow-x:hidden;
+        display:grid;
+        place-items:center;
+        padding: 28px 16px;
+      }
+
+      /* animated background glow blobs */
+      .bg-orb{
+        position: fixed;
+        inset: auto;
+        width: 520px;
+        height: 520px;
+        border-radius: 999px;
+        filter: blur(60px);
+        opacity: .35;
+        z-index: -1;
+        animation: float 10s ease-in-out infinite;
+        pointer-events:none;
+      }
+      .orb1{ left:-180px; top:-160px; background: radial-gradient(circle at 30% 30%, rgba(109,99,255,.95), transparent 55%); }
+      .orb2{ right:-220px; top:40px; background: radial-gradient(circle at 30% 30%, rgba(255,99,171,.95), transparent 55%); animation-delay: -3.2s; }
+      .orb3{ right:10%; bottom:-240px; background: radial-gradient(circle at 30% 30%, rgba(45,212,191,.95), transparent 55%); animation-delay: -6.4s; }
+      @keyframes float{
+        0%,100%{ transform: translate3d(0,0,0) scale(1); }
+        50%{ transform: translate3d(0,-22px,0) scale(1.05); }
+      }
+
+      .shell{
+        width: min(980px, 100%);
+        display:grid;
+        grid-template-columns: 1.1fr .9fr;
+        gap: 18px;
+      }
+      @media (max-width: 860px){
+        .shell{ grid-template-columns: 1fr; }
+      }
+
+      .card{
+        background: linear-gradient(180deg, var(--card), var(--card2));
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        overflow:hidden;
+        position: relative;
+      }
+
+      .card::before{
+        content:"";
+        position:absolute;
+        inset:-2px;
+        background: radial-gradient(700px 320px at 10% 0%, rgba(255,255,255,.14), transparent 55%),
+                    radial-gradient(520px 260px at 90% 10%, rgba(255,255,255,.10), transparent 55%);
+        pointer-events:none;
+      }
+
+      .left{
+        padding: 22px 22px 18px;
+      }
+
+      .topbar{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .brand{
+        display:flex;
+        flex-direction:column;
+        gap: 2px;
+      }
+      .brand h1{
+        font-size: 22px;
+        letter-spacing: .2px;
+        display:flex;
+        align-items:center;
+        gap: 10px;
+      }
+      .chip{
+        display:inline-flex;
+        align-items:center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.16);
+        background: rgba(255,255,255,.06);
+        color: var(--muted);
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      .dot{
+        width: 8px;
+        height: 8px;
+        border-radius: 99px;
+        background: rgba(255,255,255,.35);
+        box-shadow: 0 0 0 6px rgba(255,255,255,.06);
+      }
+      .dot.on{ background: rgba(46, 213, 115, .92); box-shadow: 0 0 0 6px rgba(46, 213, 115, .14); }
+      .dot.pause{ background: rgba(255, 206, 86, .95); box-shadow: 0 0 0 6px rgba(255, 206, 86, .14); }
+
+      .inputs{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 14px 0 16px;
+      }
+
+      .field{
+        display:flex;
+        flex-direction:column;
+        gap: 8px;
+      }
+      label{
+        color: var(--muted);
+        font-size: 12.5px;
+        letter-spacing:.2px;
+      }
+
+      .control{
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        padding: 12px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(10, 14, 28, .45);
+        transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      }
+      .control:focus-within{
+        border-color: rgba(255,255,255,.22);
+        background: rgba(10, 14, 28, .62);
+        transform: translateY(-1px);
+      }
+      input{
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--txt);
+        font-size: 18px;
+        font-weight: 650;
+      }
+      input::placeholder{ color: rgba(255,255,255,.30); }
+      .unit{
+        color: rgba(255,255,255,.55);
+        font-size: 12px;
+      }
+
+      .actions{
+        display:flex;
+        flex-wrap:wrap;
+        gap: 10px;
+        margin: 12px 0 10px;
+      }
+
+      button{
+        border: 1px solid rgba(255,255,255,.14);
+        background: var(--btn);
+        color: var(--txt);
+        padding: 11px 14px;
+        border-radius: 14px;
+        cursor:pointer;
+        font-size: 13.5px;
+        font-weight: 650;
+        letter-spacing:.2px;
+        display:inline-flex;
+        align-items:center;
+        gap: 10px;
+        transition: transform .16s ease, background .16s ease, border-color .16s ease, filter .16s ease;
+        user-select:none;
+      }
+      button:hover{
+        background: var(--btnHover);
+        transform: translateY(-1px);
+      }
+      button:active{
+        transform: translateY(0px) scale(.99);
+      }
+      button:disabled{
+        opacity:.45;
+        cursor:not-allowed;
+        transform:none;
+      }
+
+      .primary{
+        background: linear-gradient(135deg, rgba(109,99,255,.34), rgba(255,99,171,.20));
+        border-color: rgba(255,255,255,.18);
+      }
+      .primary:hover{
+        filter: brightness(1.08);
+      }
+
+      .pause{
+        background: linear-gradient(135deg, rgba(255, 206, 86, .24), rgba(45, 212, 191, .18));
+        border-color: rgba(255,255,255,.18);
+      }
+      .pause:hover{ filter: brightness(1.08); }
+
+      .danger{
+        background: var(--danger);
+        border-color: rgba(244, 67, 54, .55);
+      }
+      .danger:hover{ background: var(--dangerHover); }
+
+      .ghost{
+        background: rgba(255,255,255,.06);
+      }
+
+      .status{
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+        min-height: 18px;
+      }
+
+      .right{
+        padding: 22px;
+        display:flex;
+        flex-direction:column;
+        gap: 14px;
+      }
+
+      .timerWrap{
+        display:grid;
+        place-items:center;
+        padding: 18px 10px 8px;
+      }
+
+      .ring{
+        width: 250px;
+        height: 250px;
+        position: relative;
+        display:grid;
+        place-items:center;
+      }
+      .ring svg{
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 20px 40px rgba(0,0,0,.35));
+      }
+      .ring .time{
+        position:absolute;
+        text-align:center;
+        display:flex;
+        flex-direction:column;
+        gap: 6px;
+      }
+      .time .big{
+        font-variant-numeric: tabular-nums;
+        font-size: 48px;
+        font-weight: 800;
+        letter-spacing: .6px;
+      }
+      .time .small{
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .stats{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 12px;
+        padding: 14px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(10, 14, 28, .45);
+      }
+      .stats .k{
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .stats .v{
+        font-weight: 800;
+        font-size: 18px;
+      }
+
+      .hint{
+        padding: 14px 14px;
+        border-radius: 16px;
+        border: 1px dashed rgba(255,255,255,.18);
+        background: rgba(255,255,255,.04);
+        color: rgba(255,255,255,.70);
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+
+      /* subtle entry animation */
+      .card{
+        animation: enter .55s ease both;
+      }
+      @keyframes enter{
+        from{ opacity: 0; transform: translateY(10px); }
+        to{ opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="bg-orb orb1"></div>
+    <div class="bg-orb orb2"></div>
+    <div class="bg-orb orb3"></div>
+
+    <main class="shell">
+      <section class="card left" aria-label="Controls">
+        <div class="topbar">
+          <div class="brand">
+            <h1>🎯 Study Timer</h1>
+          </div>
+
+          <div class="chip" id="modeChip" title="Current mode">
+            <span class="dot" id="modeDot"></span>
+            <span id="modeText">Idle</span>
+          </div>
+        </div>
+
+        <div class="inputs">
+          <div class="field">
+            <label for="studyHours">Hours</label>
+            <div class="control">
+              <input type="number" id="studyHours" placeholder="0" min="0" inputmode="numeric" />
+              <span class="unit">h</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="studyMinutes">Minutes</label>
+            <div class="control">
+              <input type="number" id="studyMinutes" placeholder="25" min="0" inputmode="numeric" />
+              <span class="unit">min</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="startBtn" type="button">▶ Start</button>
+          <button class="pause" id="pauseBtn" type="button" disabled>⏸ Pause</button>
+          <button class="ghost" id="resetBtn" type="button">↺ Reset</button>
+          <button class="danger" id="clearBtn" type="button">🗑 Clear Total</button>
+        </div>
+
+        <div class="status" id="status">Enter time and click start.</div>
+      </section>
+
+      <aside class="card right" aria-label="Timer">
+        <div class="timerWrap">
+          <div class="ring" role="img" aria-label="Progress ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <!-- track -->
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="10" />
+              <!-- progress -->
+              <circle
+                id="progressCircle"
+                cx="60" cy="60" r="50"
+                fill="none"
+                stroke="rgba(255,255,255,.85)"
+                stroke-width="10"
+                stroke-linecap="round"
+                stroke-dasharray="314.159"
+                stroke-dashoffset="314.159"
+              />
+            </svg>
+
+            <div class="time">
+              <div class="big" id="timerDisplay">00:00</div>
+              <div class="small" id="subtitle">Ready when you are.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div>
+            <div class="k">Total Study Time</div>
+            <div class="v"><span id="totalTime">0</span> <span class="k">min</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div class="k">Session</div>
+            <div class="v"><span id="sessionLabel">—</span></div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Tip: Pause can be resumed later (even after refresh). The timer only counts down while running.
+        </div>
+      </aside>
+    </main>
+
+    <script>
+      const timerDisplay = document.getElementById('timerDisplay');
+      const subtitle = document.getElementById('subtitle');
+      const sessionLabel = document.getElementById('sessionLabel');
+
+      const startBtn = document.getElementById('startBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const clearBtn = document.getElementById('clearBtn');
+
+      const inputH = document.getElementById('studyHours');
+      const inputM = document.getElementById('studyMinutes');
+      const status = document.getElementById('status');
+
+      const totalTimeDisplay = document.getElementById('totalTime');
+      const progressCircle = document.getElementById('progressCircle');
+
+      const modeChip = document.getElementById('modeChip');
+      const modeDot = document.getElementById('modeDot');
+      const modeText = document.getElementById('modeText');
+
+      let timerInterval = null;
+
+      let endTimestamp = null;
+      let runningMinutes = 0;
+
+      let isPaused = false;
+      let remainingMs = 0;
+
+      const TOTAL_KEY = 'totalStudyTime';
+      const RUNNING_KEY = 'runningStudySession';
+
+      const RING_CIRC = 314.159; // 2*pi*50
+
+      let alarmSound = null;
+      function loadAlarmSound() {
+        try {
+          alarmSound = new Audio('alarm.mp3');
+          alarmSound.preload = 'auto';
+        } catch (e) {
+          console.log("Error loading alarm sound");
+          alarmSound = null;
+        }
+      }
+      function playAlarm() {
+        if (!alarmSound) return;
+        alarmSound.currentTime = 0;
+        alarmSound.play().catch(() => console.log("Sound blocked by browser"));
+      }
+
+      function loadTotalTime() {
+        return parseInt(localStorage.getItem(TOTAL_KEY) || '0', 10);
+      }
+      function updateTotalDisplay(total) {
+        totalTimeDisplay.textContent = String(total);
+      }
+      function saveTotalTime(addMinutes) {
+        const current = loadTotalTime();
+        const next = current + addMinutes;
+        localStorage.setItem(TOTAL_KEY, String(next));
+        updateTotalDisplay(next);
+      }
+
+      function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      }
+
+      function setModeUI(mode) {
+        // mode: 'idle' | 'running' | 'paused'
+        modeDot.classList.remove('on', 'pause');
+        if (mode === 'running') {
+          modeDot.classList.add('on');
+          modeText.textContent = 'Focus';
+          subtitle.textContent = 'Stay locked in.';
+        } else if (mode === 'paused') {
+          modeDot.classList.add('pause');
+          modeText.textContent = 'Paused';
+          subtitle.textContent = 'Paused. Resume when ready.';
+        } else {
+          modeText.textContent = 'Idle';
+          subtitle.textContent = 'Ready when you are.';
+        }
+      }
+
+      function setProgress(secondsLeft) {
+        const totalSeconds = Math.max(1, runningMinutes * 60);
+        const progress = Math.min(1, Math.max(0, 1 - (secondsLeft / totalSeconds)));
+        const dash = RING_CIRC * (1 - progress);
+        progressCircle.style.strokeDasharray = String(RING_CIRC);
+        progressCircle.style.strokeDashoffset = String(dash);
+      }
+
+      function setRunningSession(payload) {
+        // payload: { end:number|null, minutes:number, paused:boolean, remainingMs:number }
+        runningMinutes = payload.minutes;
+        isPaused = !!payload.paused;
+        remainingMs = payload.remainingMs || 0;
+        endTimestamp = payload.end;
+        localStorage.setItem(RUNNING_KEY, JSON.stringify(payload));
+      }
+
+      function clearRunningSession() {
+        endTimestamp = null;
+        runningMinutes = 0;
+        isPaused = false;
+        remainingMs = 0;
+        localStorage.removeItem(RUNNING_KEY);
+        document.title = "Study Timer";
+        setModeUI('idle');
+        sessionLabel.textContent = '—';
+        setProgress(0);
+      }
+
+      function loadRunningSession() {
+        const raw = localStorage.getItem(RUNNING_KEY);
+        if (!raw) return null;
+        try {
+          const obj = JSON.parse(raw);
+          const okMinutes = obj && typeof obj.minutes === 'number';
+          const okPaused = obj && typeof obj.paused === 'boolean';
+          // When running: need end; when paused: need remainingMs
+          if (!okMinutes || !okPaused) return null;
+
+          if (obj.paused) {
+            if (typeof obj.remainingMs !== 'number') return null;
+            return { end: null, minutes: obj.minutes, paused: true, remainingMs: obj.remainingMs };
+          } else {
+            if (typeof obj.end !== 'number') return null;
+            return { end: obj.end, minutes: obj.minutes, paused: false, remainingMs: 0 };
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      function stopInterval() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      }
+
+      function updateTick() {
+        if (isPaused) return;
+        if (!endTimestamp) return;
+
+        const now = Date.now();
+        let secondsLeft = Math.ceil((endTimestamp - now) / 1000);
+        if (secondsLeft < 0) secondsLeft = 0;
+
+        timerDisplay.textContent = formatTime(secondsLeft);
+        document.title = `⏱️ ${formatTime(secondsLeft)} left – Study Timer`;
+        setProgress(secondsLeft);
+
+        if (secondsLeft <= 0) onComplete();
+      }
+
+      function startIntervalIfNeeded() {
+        if (timerInterval) return;
+        updateTick();
+        timerInterval = setInterval(updateTick, 500);
+      }
+
+      function lockInputs(locked) {
+        inputH.disabled = locked;
+        inputM.disabled = locked;
+        startBtn.disabled = locked;
+      }
+
+      function startTimer() {
+        if (endTimestamp || isPaused) return;
+
+        const h = parseInt(inputH.value || '0', 10);
+        const m = parseInt(inputM.value || '0', 10);
+        const totalMinutes = h * 60 + m;
+
+        if (totalMinutes <= 0) {
+          status.textContent = "Please enter a valid time.";
+          return;
+        }
+
+        const now = Date.now();
+        const end = now + totalMinutes * 60 * 1000;
+
+        setRunningSession({ end, minutes: totalMinutes, paused: false, remainingMs: 0 });
+
+        lockInputs(true);
+        pauseBtn.disabled = false;
+        pauseBtn.textContent = "⏸ Pause";
+
+        status.textContent = "Focus mode started!";
+        sessionLabel.textContent = `${totalMinutes} min`;
+        setModeUI('running');
+        startIntervalIfNeeded();
+      }
+
+      function pauseOrResume() {
+        if ((!endTimestamp && !isPaused) || runningMinutes <= 0) return;
+
+        if (!isPaused) {
+          // Pause
+          const now = Date.now();
+          remainingMs = Math.max(0, endTimestamp - now);
+          isPaused = true;
+          endTimestamp = null;
+
+          stopInterval();
+
+          setRunningSession({ end: null, minutes: runningMinutes, paused: true, remainingMs });
+
+          pauseBtn.textContent = "▶ Resume";
+          status.textContent = "Paused. You can close the tab and resume later.";
+          setModeUI('paused');
+
+          const secondsLeft = Math.ceil(remainingMs / 1000);
+          timerDisplay.textContent = formatTime(secondsLeft);
+          document.title = `⏸️ Paused – Study Timer`;
+          setProgress(secondsLeft);
+        } else {
+          // Resume
+          const now = Date.now();
+          const end = now + remainingMs;
+
+          isPaused = false;
+          endTimestamp = end;
+
+          setRunningSession({ end, minutes: runningMinutes, paused: false, remainingMs: 0 });
+
+          pauseBtn.textContent = "⏸ Pause";
+          status.textContent = "Resumed. Focus mode running!";
+          setModeUI('running');
+
+          startIntervalIfNeeded();
+        }
+      }
+
+      function onComplete() {
+        // Only complete if we are actively running
+        if (!endTimestamp || isPaused) return;
+
+        stopInterval();
+        saveTotalTime(runningMinutes);
+        clearRunningSession();
+
+        timerDisplay.textContent = "00:00";
+        lockInputs(false);
+        pauseBtn.disabled = true;
+        pauseBtn.textContent = "⏸ Pause";
+
+        status.textContent = "Session completed! Enter new time to start again.";
+        playAlarm();
+      }
+
+      function resetTimer() {
+        stopInterval();
+        clearRunningSession();
+
+        lockInputs(false);
+        pauseBtn.disabled = true;
+        pauseBtn.textContent = "⏸ Pause";
+
+        timerDisplay.textContent = "00:00";
+        status.textContent = "Enter time and click start.";
+        setProgress(0);
+      }
+
+      // Keep your existing “clear total” behavior
+      clearBtn.addEventListener('click', () => {
+        localStorage.removeItem(TOTAL_KEY);
+        updateTotalDisplay(0);
+        status.textContent = "Total study time cleared.";
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateTick();
+      });
+      window.addEventListener('focus', updateTick);
+
+      window.addEventListener('load', () => {
+        loadAlarmSound();
+        updateTotalDisplay(loadTotalTime());
+        setModeUI('idle');
+        setProgress(0);
+
+        const running = loadRunningSession();
+        if (!running) return;
+
+        runningMinutes = running.minutes;
+        sessionLabel.textContent = `${runningMinutes} min`;
+
+        lockInputs(true);
+        pauseBtn.disabled = false;
+
+        if (running.paused) {
+          isPaused = true;
+          remainingMs = running.remainingMs;
+          endTimestamp = null;
+
+          pauseBtn.textContent = "▶ Resume";
+          status.textContent = "Session is paused. Resume when ready.";
+          setModeUI('paused');
+
+          const secondsLeft = Math.ceil(remainingMs / 1000);
+          timerDisplay.textContent = formatTime(secondsLeft);
+          document.title = `⏸️ Paused – Study Timer`;
+          setProgress(secondsLeft);
+        } else {
+          const now = Date.now();
+          if (running.end > now) {
+            isPaused = false;
+            endTimestamp = running.end;
+
+            pauseBtn.textContent = "⏸ Pause";
+            status.textContent = "Resuming your running session...";
+            setModeUI('running');
+            startIntervalIfNeeded();
+          } else {
+            // finished while away
+            saveTotalTime(running.minutes);
+            clearRunningSession();
+
+            timerDisplay.textContent = "00:00";
+            lockInputs(false);
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = "⏸ Pause";
+
+            status.textContent = "Previous session completed while you were away.";
+          }
+        }
+      });
+
+      startBtn.addEventListener('click', startTimer);
+      pauseBtn.addEventListener('click', pauseOrResume);
+      resetBtn.addEventListener('click', resetTimer);
+
+      window.addEventListener('beforeunload', stopInterval);
+    </script>
+  </body>
+</html>
