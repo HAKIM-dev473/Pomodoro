@@ -478,10 +478,14 @@
       function loadTotalTime() {
         return parseInt(localStorage.getItem(TOTAL_KEY) || '0', 10);
       }
+      
+      // Changed to exact HH.MM format
       function updateTotalDisplay(total) {
-        const hours = (total / 60).toFixed(2);
-        totalTimeDisplay.textContent = String(Number(hours));
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        totalTimeDisplay.textContent = `${h}.${m.toString().padStart(2, '0')}`;
       }
+
       function saveTotalTime(addMinutes) {
         const current = loadTotalTime();
         const next = current + addMinutes;
@@ -692,7 +696,6 @@
         setProgress(0);
       }
 
-      // Keep your existing “clear total” behavior
       clearBtn.addEventListener('click', () => {
         localStorage.removeItem(TOTAL_KEY);
         updateTotalDisplay(0);
